@@ -1,0 +1,405 @@
+import React, { useState } from 'react';
+import { CheckCircle2, XCircle, BrainCircuit, ArrowLeft, Trophy, AlertCircle, Lightbulb, Info } from 'lucide-react';
+
+const questions = [
+  {
+    id: 1,
+    text: "תינוק מתחיל לזחול ואז ללכת באופן טבעי ברגע שמערכת העצבים והשרירים שלו מוכנים לכך פיזית.",
+    options: ["גדילה", "בשילה", "למידה"],
+    correctAnswer: "בשילה",
+    explanation: "שינוי איכותי שמתבטא ביכולת לבצע פעולות חדשות שלא ניתן היה לבצע קודם לכן"
+  },
+  {
+    id: 2,
+    text: "רועי בן ה-5 למד לרכוב על אופניים ללא גלגלי עזר לאחר שאביו אימן אותו בפארק במשך מספר שבועות.",
+    options: ["גדילה", "בשילה", "למידה"],
+    correctAnswer: "למידה",
+    explanation: "שינוי בהתנהגות כתוצאה מהתנסות ותרגול."
+  },
+  {
+    id: 3,
+    text: "עמית שם לב שבגדי הקיץ מהשנה שעברה כבר קטנים עליו מאוד משום שגבה ב-10 סנטימטרים.",
+    options: ["גדילה", "בשילה", "למידה"],
+    correctAnswer: "גדילה",
+    explanation: "שינוי כמותי שמתבטא בעליה במספר התאים באיברים (צמיחה, התארכות האיברים, עליה במשקל)"
+  },
+  {
+    id: 4,
+    text: "תלמידה למדה לנגן יצירה חדשה בגיטרה בעקבות צפייה בסרטוני הדרכה ותרגול יומיומי.",
+    options: ["גדילה", "בשילה", "למידה"],
+    correctAnswer: "למידה",
+    explanation: "שינוי בהתנהגות כתוצאה מהתנסות ותרגול."
+  },
+  {
+    id: 5,
+    text: "שירה בת ה-16 וחצי מתחילה ללמוד נהיגה משום שהיא הגיעה לרמת המוכנות הקוגניטיבית והמוטורית הנדרשת.",
+    options: ["גדילה", "בשילה", "למידה"],
+    correctAnswer: "בשילה",
+    explanation: "שינוי איכותי שמתבטא ביכולת לבצע פעולות חדשות שלא ניתן היה לבצע קודם לכן"
+  },
+  {
+    id: 6,
+    text: "בבדיקת רופא שגרתית, האחות ציינה שמשקלו של דניאל בן ה-10 עלה ב-3 קילוגרמים מאז השנה שעברה.",
+    options: ["גדילה", "בשילה", "למידה"],
+    correctAnswer: "גדילה",
+    explanation: "שינוי כמותי שמתבטא בעליה במספר התאים באיברים (צמיחה, התארכות האיברים, עליה במשקל)"
+  },
+  {
+    id: 7,
+    text: "רוני יודעת כעת לפתור משוואות מורכבות לאחר שהמורה הסבירה את החומר והיא תרגלה תרגילים רבים.",
+    options: ["גדילה", "בשילה", "למידה"],
+    correctAnswer: "למידה",
+    explanation: "שינוי בהתנהגות כתוצאה מהתנסות ותרגול."
+  }
+];
+
+// תמונת מוח (מייצגת התפתחות ולמידה)
+const HIDDEN_IMAGE_URL = "https://i.postimg.cc/v1LZMS8z/Pixar-1.jpg";
+const VALID_ANSWERS = ["מוח", "מח", "המוח", "מוחות"];
+
+// רכיב חוזר המציג את ההגדרות
+const DefinitionsList = () => (
+  <div className="space-y-3 text-right">
+    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+      <h4 className="font-bold text-blue-800 text-lg mb-1">גדילה</h4>
+      <p className="text-slate-700 text-sm md:text-base leading-relaxed">שינוי כמותי שמתבטא בעליה במספר התאים באיברים (צמיחה, התארכות האיברים, עליה במשקל)</p>
+    </div>
+    <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+      <h4 className="font-bold text-green-800 text-lg mb-1">בשילה</h4>
+      <p className="text-slate-700 text-sm md:text-base leading-relaxed">שינוי איכותי שמתבטא ביכולת לבצע פעולות חדשות שלא ניתן היה לבצע קודם לכן</p>
+    </div>
+    <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+      <h4 className="font-bold text-purple-800 text-lg mb-1">למידה</h4>
+      <p className="text-slate-700 text-sm md:text-base leading-relaxed">שינוי בהתנהגות כתוצאה מהתנסות ותרגול.</p>
+    </div>
+  </div>
+);
+
+export default function App() {
+  const [currentStep, setCurrentStep] = useState(-1); // -1: Intro, 0-6: Questions, 7: Guess, 8: Win
+  const [revealedParts, setRevealedParts] = useState([]);
+  const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', text: string }
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [guessInput, setGuessInput] = useState("");
+  const [guessError, setGuessError] = useState(false);
+  const [showHintModal, setShowHintModal] = useState(false); // ניהול חלון הרמז
+
+  const currentQuestion = currentStep >= 0 && currentStep < 7 ? questions[currentStep] : null;
+
+  const handleOptionClick = (option) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+
+    if (option === currentQuestion.correctAnswer) {
+      setFeedback({
+        type: 'success',
+        text: currentQuestion.explanation
+      });
+      
+      // Reveal the next part of the puzzle
+      setRevealedParts(prev => [...prev, currentStep]);
+
+      // Wait a bit so the student can read the explanation before moving on
+      setTimeout(() => {
+        setFeedback(null);
+        setCurrentStep(prev => prev + 1);
+        setIsProcessing(false);
+      }, 4000); // 4 seconds to read
+
+    } else {
+      setFeedback({
+        type: 'error',
+        text: "תשובה לא נכונה. נסו שוב!"
+      });
+      
+      setTimeout(() => {
+        setFeedback(null);
+        setIsProcessing(false);
+      }, 2000);
+    }
+  };
+
+  const handleGuessSubmit = (e) => {
+    e.preventDefault();
+    const cleanGuess = guessInput.trim();
+    
+    if (VALID_ANSWERS.includes(cleanGuess)) {
+      setGuessError(false);
+      setCurrentStep(8); // Win state
+    } else {
+      setGuessError(true);
+      setTimeout(() => setGuessError(false), 3000);
+    }
+  };
+
+  const restartGame = () => {
+    setCurrentStep(-1);
+    setRevealedParts([]);
+    setFeedback(null);
+    setIsProcessing(false);
+    setGuessInput("");
+    setGuessError(false);
+    setShowHintModal(false);
+  };
+
+  // מערך המספרים המייצג את חלקי הפאזל (7 שאלות)
+  const puzzleParts = [0, 1, 2, 3, 4, 5, 6];
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans" dir="rtl">
+      
+      <div className="max-w-6xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col lg:flex-row border border-slate-100 relative">
+        
+        {/* Right Panel - The Puzzle */}
+        <div className="lg:w-[45%] p-6 bg-slate-100 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-l border-slate-200">
+          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <BrainCircuit className="text-blue-600" />
+            פאזל התפתחות
+          </h2>
+          
+          {/* הוגדר dir="ltr" ספציפית כאן כדי שהתמונה תיחתך ותסתדר משמאל לימין בצורה תקינה */}
+          <div className="relative w-full aspect-square max-w-[400px] rounded-xl overflow-hidden shadow-inner border-4 border-white bg-slate-200 flex" dir="ltr">
+            {puzzleParts.map((partIndex) => {
+              const isRevealed = revealedParts.includes(partIndex) || currentStep >= 7;
+              return (
+                <div 
+                  key={partIndex}
+                  className="h-full relative border-r border-white/20 last:border-r-0 transition-all duration-700 ease-in-out"
+                  style={{ width: `${100 / 7}%` }} // בדיוק 1/7 מהרוחב לכל חלק
+                >
+                  {isRevealed ? (
+                    <div 
+                      className="absolute inset-0 w-full h-full animate-fade-in"
+                      style={{
+                        backgroundImage: `url("${HIDDEN_IMAGE_URL}")`,
+                        backgroundSize: '700% 100%', // תמונה גדולה פי 7 מהחלק הבודד
+                        backgroundPosition: `${partIndex * (100 / 6)}% center`, // חישוב מדויק לתזוזה משמאל לימין וממורכז אנכית
+                        backgroundRepeat: 'no-repeat'
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 w-full h-full bg-slate-800 flex items-center justify-center">
+                      <span className="text-slate-600 text-2xl font-bold opacity-30">?</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex gap-1.5 flex-row-reverse">
+             {puzzleParts.map((dot) => (
+                <div 
+                  key={dot} 
+                  className={`w-3 h-3 rounded-full transition-colors duration-300 ${revealedParts.includes(dot) ? 'bg-blue-600' : 'bg-slate-300'}`}
+                />
+             ))}
+          </div>
+        </div>
+
+        {/* Left Panel - Interaction */}
+        <div className="lg:w-[55%] p-6 md:p-8 flex flex-col justify-center min-h-[500px]">
+          
+          {/* Phase 0: Introduction Screen */}
+          {currentStep === -1 && (
+            <div className="animate-fade-in flex flex-col h-full overflow-y-auto">
+              <h2 className="text-3xl font-black text-slate-800 mb-4">ברוכים הבאים למשחק!</h2>
+              <p className="text-slate-600 mb-6 text-lg">
+                במשחק זה נבחן את הבנתכם במושגי ההתפתחות המרכזיים. על כל תשובה נכונה שתענו - ייחשף חלק מהפאזל. בסוף תצטרכו לזהות את התמונה המסתתרת! <br/>
+                לפני שנתחיל, הנה תזכורת קצרה להגדרות:
+              </p>
+              
+              <div className="mb-8">
+                <DefinitionsList />
+              </div>
+              
+              <button 
+                onClick={() => setCurrentStep(0)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-md hover:shadow-lg text-xl"
+              >
+                הבנתי, בואו נתחיל!
+              </button>
+            </div>
+          )}
+
+          {/* Phase 1: Questions */}
+          {currentStep >= 0 && currentStep < 7 && currentQuestion && (
+            <div className="animate-fade-in flex flex-col h-full justify-center">
+              
+              <div className="flex justify-between items-center mb-4">
+                <div className="text-sm font-semibold text-blue-600 tracking-wider">
+                  שאלה {currentStep + 1} מתוך 7
+                </div>
+                
+                {/* כפתור רמז (נפתח כמודאל) */}
+                <button 
+                  onClick={() => setShowHintModal(true)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 py-1.5 px-3 rounded-full transition-colors border border-slate-200"
+                >
+                  <Lightbulb className="w-4 h-4 text-amber-500" />
+                  רמז (הגדרות)
+                </button>
+              </div>
+
+              <h3 className="text-xl md:text-2xl font-semibold text-slate-800 mb-8 leading-relaxed">
+                {currentQuestion.text}
+              </h3>
+              
+              <div className="space-y-3">
+                {currentQuestion.options.map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleOptionClick(option)}
+                    disabled={isProcessing}
+                    className={`w-full p-4 text-right rounded-xl border-2 transition-all duration-200 text-lg font-medium
+                      ${isProcessing 
+                        ? 'opacity-70 cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500' 
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50 hover:shadow-sm'
+                      }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+
+              {/* Feedback Alert */}
+              {feedback && (
+                <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 animate-slide-up
+                  ${feedback.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}
+                `}>
+                  {feedback.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0 text-green-600 mt-0.5" /> : <XCircle className="w-6 h-6 shrink-0 text-red-600 mt-0.5" />}
+                  <div>
+                    <div className="font-bold text-lg mb-1">
+                      {feedback.type === 'success' ? 'נכון מאוד!' : 'טעות'}
+                    </div>
+                    {feedback.text && <p className="text-base leading-relaxed">{feedback.text}</p>}
+                    {feedback.type === 'success' && (
+                      <div className="text-sm mt-2 opacity-80 flex items-center gap-1 font-medium">
+                        <ArrowLeft className="w-4 h-4" /> ממשיכים לשאלה הבאה...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Phase 2: Guess the picture */}
+          {currentStep === 7 && (
+            <div className="text-center animate-fade-in flex flex-col justify-center h-full">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <BrainCircuit className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-3xl font-bold text-slate-800 mb-4">כל הכבוד!</h3>
+              <p className="text-lg text-slate-600 mb-8">
+                עניתם נכון על כל השאלות וחשפתם את הפאזל במלואו. <br/>
+                התבוננו בתמונה – <strong>איזו מילה אחת</strong> מתארת את מה שמופיע בה?
+              </p>
+              
+              <form onSubmit={handleGuessSubmit} className="max-w-xs mx-auto w-full">
+                <input 
+                  type="text"
+                  value={guessInput}
+                  onChange={(e) => setGuessInput(e.target.value)}
+                  placeholder="הקלידו מילה אחת כאן..."
+                  className={`w-full px-4 py-3 rounded-xl border-2 text-center text-xl mb-4 focus:outline-none transition-colors
+                    ${guessError ? 'border-red-400 bg-red-50' : 'border-slate-300 focus:border-blue-500'}
+                  `}
+                  autoFocus
+                />
+                
+                {guessError && (
+                  <p className="text-red-600 text-sm mb-4 flex items-center justify-center gap-1 font-medium animate-shake">
+                    <AlertCircle className="w-4 h-4" /> לא מדויק, נסו שוב!
+                  </p>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={!guessInput.trim()}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-md hover:shadow-lg text-lg"
+                >
+                  בדיקת תשובה
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Phase 3: Victory */}
+          {currentStep === 8 && (
+            <div className="text-center animate-fade-in flex flex-col items-center justify-center h-full">
+              <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
+              <h3 className="text-4xl font-black text-slate-800 mb-4">אלופים!</h3>
+              <p className="text-xl text-slate-600 mb-8 leading-relaxed">
+                זיהיתם נכון! התמונה היא של <strong>מוח</strong>. <br/>
+                המוח הוא המרכז הפיזי בו מתרחשים ומעובדים כל תהליכי הלמידה, ההתפתחות והבשילה שלנו.
+              </p>
+              
+              <button 
+                onClick={restartGame}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-xl transition-colors shadow-md flex items-center gap-2 text-lg"
+              >
+                שחקו שוב למטרת חזרה
+              </button>
+            </div>
+          )}
+
+        </div>
+
+        {/* חלון צף (Modal) לרמז - מעל המשחק */}
+        {showHintModal && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm rounded-2xl animate-fade-in">
+            <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-slide-up relative flex flex-col max-h-[90%] overflow-y-auto" dir="rtl">
+              <button 
+                onClick={() => setShowHintModal(false)} 
+                className="absolute top-4 left-4 p-1.5 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+              
+              <h3 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2 mt-2">
+                <Info className="text-blue-500 w-6 h-6" />
+                תזכורת להגדרות
+              </h3>
+              
+              <DefinitionsList />
+              
+              <button 
+                onClick={() => setShowHintModal(false)} 
+                className="w-full mt-6 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-colors shadow-sm"
+              >
+                סגירה וחזרה לשאלה
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+      
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        .animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
+        .animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+        .animate-shake { animation: shake 0.3s ease-in-out; }
+        
+        /* סקרולבר מעוצב לחלון הרמז במידת הצורך */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      `}} />
+    </div>
+  );
+}
